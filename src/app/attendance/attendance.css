@@ -201,6 +201,25 @@
   background: var(--paper);
   color: var(--teal);
 }
+.create-team-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+.search-and-create {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+  margin-top: 16px;
+}
+.search-and-create .search-wrap {
+  flex: 1;
+  margin-top: 0;
+}
+.create-team-button {
+  flex: 0 0 auto;
+  min-height: 53px !important;
+}
 .search-wrap .input {
   width: 100%;
   min-width: 0;
@@ -532,6 +551,7 @@
 }
 .field-label {
   display: grid;
+  min-width: 0;
   gap: 7px;
   color: #446866;
   font-size: 12px;
@@ -553,6 +573,80 @@
 .field-label .input:focus {
   border-color: var(--teal);
   box-shadow: 0 0 0 2px rgba(18, 122, 117, 0.12);
+}
+.room-field {
+  width: min(250px, 100%);
+  margin-top: 14px;
+}
+.field-select {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: 45px;
+  padding: 0 38px 0 12px;
+  border: 1px solid #b4d0c7;
+  border-radius: 9px;
+  background: #fff;
+  color: var(--ink);
+  font-family: var(--font-geist-sans), Arial, sans-serif !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+  line-height: 1.2 !important;
+  overflow: hidden;
+}
+.field-label > [data-slot="select"] {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+.field-select * {
+  font-family: var(--font-geist-sans), Arial, sans-serif !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+}
+.field-select .select__value,
+.field-select [data-slot="select-value"] {
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.field-select .select__indicator,
+.field-select [data-slot="select-indicator"] {
+  flex: 0 0 auto;
+  margin-left: 10px;
+}
+.field-select:focus {
+  border-color: var(--teal);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(18, 122, 117, 0.12);
+}
+.room-badge {
+  display: inline-flex;
+  margin-top: 12px;
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #edf2ef;
+  color: #667a73;
+  font-family: var(--font-conthrax), var(--font-geist-sans), sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.room-badge.assigned {
+  background: #176353;
+  color: #e9fff2;
+  box-shadow: 0 4px 10px rgba(23, 99, 83, 0.18);
+}
+.team-panel p .room-badge {
+  margin: 0 0 0 8px;
+  vertical-align: middle;
 }
 .editor-note {
   margin: 12px 0 0 !important;
@@ -790,6 +884,12 @@
   background: rgba(18, 118, 106, 0.22);
 }
 @media (max-width: 640px) {
+  .search-and-create {
+    flex-direction: column;
+  }
+  .create-team-button {
+    width: 100%;
+  }
   .portal-shell {
     padding: 12px 10px 24px;
   }

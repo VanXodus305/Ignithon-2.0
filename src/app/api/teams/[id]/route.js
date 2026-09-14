@@ -14,6 +14,10 @@ export async function PATCH(request, { params }) {
     const team = await Team.findOne({ id: Number(id) });
     if (!team) return Response.json({ error: "Team not found." }, { status: 404 });
     const body = await request.json();
+    const room = cleanText(body.room)?.toUpperCase() || null;
+    if (room && !["A", "B", "C"].includes(room)) {
+      return Response.json({ error: "Room must be A, B, or C." }, { status: 400 });
+    }
     const incoming = Array.isArray(body.members) ? body.members : [];
     if (incoming.length < 1 || incoming.length > 4) {
       return Response.json({ error: "A team must contain between 1 and 4 participants." }, { status: 400 });
@@ -68,6 +72,12 @@ export async function PATCH(request, { params }) {
           { session },
         );
         team.name = cleanText(body.name) || team.name;
+        if (room !== team.room) {
+          team.room = room;
+          team.room_sequence = room
+            ? (await Team.countDocuments({ room, _id: { $ne: team._id } }).session(session)) + 1
+            : null;
+        }
         team.members = orderedIds;
         await team.save({ session });
       });
@@ -79,5 +89,26 @@ export async function PATCH(request, { params }) {
   } catch (error) {
     const message = error.code === 11000 ? "That email is already registered to another participant." : error.message;
     return Response.json({ error: message || "Could not update the team." }, { status: 500 });
+  }
+}
+
+export async function DELETE(_request, { params }) {
+  try {
+    await connectMongo();
+    const { id } = await params;
+    const team = await Team.findOne({ id: Number(id) });
+    if (!team) return Response.json({ error: "Team not found." }, { status: 404 });
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        await Participant.deleteMany({ team_id: team._id }, { session });
+        await Team.deleteOne({ _id: team._id }, { session });
+      });
+    } finally {
+      await session.endSession();
+    }
+    return Response.json({ success: true });
+  } catch (error) {
+    return Response.json({ error: error.message || "Could not delete the team." }, { status: 500 });
   }
 }

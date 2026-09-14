@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Input, Modal, Switch, useOverlayState } from "@heroui/react";
+import { Button, Input, ListBox, Modal, Select, Switch, useOverlayState } from "@heroui/react";
 import { Check, CircleAlert, LoaderCircle, Trash2, UserPlus } from "lucide-react";
 import { useState } from "react";
 
@@ -12,15 +12,39 @@ const memberFields = [
   ["name", "Full name"], ["email", "Email"], ["phone", "Phone"], ["roll_no", "Roll number"],
   ["hostel", "Hostel"], ["branch", "Branch"], ["year", "Year"],
 ];
+const branchOptions = ["Information Technology", "Computer Science", "Electronics & Computer Science", "Mechanical Engineering", "Other"];
+const yearOptions = [
+  { value: "1", label: "1st Year" },
+  { value: "2", label: "2nd Year" },
+  { value: "3", label: "3rd Year" },
+  { value: "4", label: "4th Year" },
+  { value: "5", label: "5th Year" },
+];
 
-export default function TeamEditor({ team, onClose, onSaved }) {
+function DropdownField({ value, onChange, placeholder, options, ariaLabel }) {
+  return (
+    <Select fullWidth selectedKey={value || null} onSelectionChange={(key) => onChange(key ? String(key) : "")}>
+      <Select.Trigger className="field-select">
+        <Select.Value>{({ defaultChildren }) => defaultChildren || placeholder}</Select.Value>
+        <Select.Indicator />
+      </Select.Trigger>
+      <Select.Popover><ListBox aria-label={ariaLabel}>{options.map(({ value: optionValue, label }) => <ListBox.Item id={optionValue} key={optionValue}>{label}</ListBox.Item>)}</ListBox></Select.Popover>
+    </Select>
+  );
+}
+
+export default function TeamEditor({ team, onClose, onSaved, onDeleteTeam }) {
+  const isNew = !team;
+  const initialTeam = team || { name: "", room: null, members: [{ ...emptyMember(), role: "leader" }] };
   const modalState = useOverlayState({
     defaultOpen: true,
     onOpenChange: (isOpen) => { if (!isOpen) onClose(); },
   });
-  const [draft, setDraft] = useState({ ...team, members: team.members.map((member) => ({ ...member })) });
+  const [draft, setDraft] = useState({ ...initialTeam, members: initialTeam.members.map((member) => ({ ...member })) });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [confirmation, setConfirmation] = useState(null);
+  const confirmState = useOverlayState({ isOpen: Boolean(confirmation), onOpenChange: (isOpen) => { if (!isOpen) setConfirmation(null); } });
 
   const updateMember = (index, key, value) => setDraft((current) => ({
     ...current,
@@ -39,8 +63,8 @@ export default function TeamEditor({ team, onClose, onSaved }) {
     setSaving(true);
     setError("");
     try {
-      const response = await fetch("/api/teams/" + team.id, {
-        method: "PATCH",
+      const response = await fetch(isNew ? "/api/teams" : "/api/teams/" + team.id, {
+        method: isNew ? "POST" : "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(draft),
       });
@@ -55,7 +79,21 @@ export default function TeamEditor({ team, onClose, onSaved }) {
     }
   }
 
+  async function confirmDeletion() {
+    if (confirmation.type === "member") removeMember(confirmation.index);
+    else {
+      try {
+        await onDeleteTeam();
+        modalState.close();
+      } catch (deleteError) {
+        setError(deleteError.message || "Could not delete the team.");
+      }
+    }
+    setConfirmation(null);
+  }
+
   return (
+    <>
     <Modal state={modalState}>
       <Modal.Backdrop variant="blur" className="editor-backdrop">
         <Modal.Container scroll="inside" className="editor-container">
@@ -63,7 +101,7 @@ export default function TeamEditor({ team, onClose, onSaved }) {
             <Modal.Header className="modal-heading editor-modal-heading">
               <div>
                 <span className="eyebrow">TEAM CONFIGURATION</span>
-                <Modal.Heading className="editor-title">Edit #{team.id}</Modal.Heading>
+                <Modal.Heading className="editor-title">{isNew ? "Create team" : "Edit #" + team.id}</Modal.Heading>
               </div>
               <Modal.CloseTrigger className="icon-button" aria-label="Close team editor" />
             </Modal.Header>
@@ -72,6 +110,10 @@ export default function TeamEditor({ team, onClose, onSaved }) {
                 TEAM NAME
                 <Input variant="secondary" value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
               </label>
+              {!isNew && <label className="field-label room-field">
+                ROOM
+                <DropdownField value={draft.room} onChange={(room) => setDraft({ ...draft, room })} placeholder="Unassigned" ariaLabel="Team room" options={[{ value: "A", label: "Room A" }, { value: "B", label: "Room B" }, { value: "C", label: "Room C" }]} />
+              </label>}
               <p className="editor-note">Choose one leader. They are always stored first in the roster.</p>
               <div className="editor-members">
                 {draft.members.map((member, index) => (
@@ -82,7 +124,7 @@ export default function TeamEditor({ team, onClose, onSaved }) {
                         <Switch size="sm" className="leader-switch" isSelected={member.role === "leader"} onChange={(isSelected) => { if (isSelected) makeLeader(index); }}>
                           <Switch.Content><Switch.Control><Switch.Thumb /></Switch.Control><span>Team leader</span></Switch.Content>
                         </Switch>
-                        <Button isIconOnly variant="ghost" className="remove-member" aria-label={"Remove " + member.name} disabled={draft.members.length === 1} onPress={() => removeMember(index)}>
+                        <Button isIconOnly variant="ghost" className="remove-member" aria-label={"Remove " + member.name} disabled={draft.members.length === 1} onPress={() => setConfirmation({ type: "member", index, name: member.name })}>
                           <Trash2 size={16} />
                         </Button>
                       </div>
@@ -91,7 +133,7 @@ export default function TeamEditor({ team, onClose, onSaved }) {
                       {memberFields.map(([key, label]) => (
                         <label className="field-label" key={key}>
                           {label}
-                          <Input variant="secondary" value={member[key] || ""} onChange={(event) => updateMember(index, key, event.target.value)} />
+                          {key === "branch" ? <DropdownField value={member.branch} onChange={(value) => updateMember(index, key, value)} placeholder="Select branch" ariaLabel="Branch" options={[...(member.branch && !branchOptions.includes(member.branch) ? [{ value: member.branch, label: member.branch }] : []), ...branchOptions.map((option) => ({ value: option, label: option }))]} /> : key === "year" ? <DropdownField value={member.year ? String(member.year) : ""} onChange={(value) => updateMember(index, key, value)} placeholder="Select year" ariaLabel="Year" options={yearOptions} /> : <Input variant="secondary" value={member[key] || ""} onChange={(event) => updateMember(index, key, event.target.value)} />}
                         </label>
                       ))}
                     </div>
@@ -106,6 +148,7 @@ export default function TeamEditor({ team, onClose, onSaved }) {
               {error && <p className="form-error"><CircleAlert size={16} />{error}</p>}
             </Modal.Body>
             <Modal.Footer className="modal-actions">
+              {!isNew && <Button variant="ghost" className="remove-member" onPress={() => setConfirmation({ type: "team" })}><Trash2 size={16} /> Delete team</Button>}
               <Button variant="ghost" className="cancel-button" onPress={modalState.close}>Cancel</Button>
               <Button variant="primary" className="primary-button" onPress={save} isDisabled={saving}>
                 {saving ? <LoaderCircle className="spin" size={17} /> : <Check size={17} />} Save changes
@@ -115,5 +158,15 @@ export default function TeamEditor({ team, onClose, onSaved }) {
         </Modal.Container>
       </Modal.Backdrop>
     </Modal>
+    <Modal state={confirmState}>
+      <Modal.Backdrop variant="blur">
+        <Modal.Container><Modal.Dialog className="confirmation-modal">
+          <Modal.Header><Modal.Heading>{confirmation?.type === "team" ? "Delete team?" : "Remove participant?"}</Modal.Heading></Modal.Header>
+          <Modal.Body><p>{confirmation?.type === "team" ? "This permanently deletes the team and every participant in it." : `Remove ${confirmation?.name} from this team? Their participant record will be permanently deleted when changes are saved.`}</p></Modal.Body>
+          <Modal.Footer><Button variant="ghost" onPress={() => setConfirmation(null)}>Cancel</Button><Button variant="danger" onPress={confirmDeletion}>Delete</Button></Modal.Footer>
+        </Modal.Dialog></Modal.Container>
+      </Modal.Backdrop>
+    </Modal>
+    </>
   );
 }

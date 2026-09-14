@@ -9,6 +9,7 @@ import {
   QrCode,
   Search,
   Users,
+  UserPlus,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -23,6 +24,7 @@ export default function AttendanceConsole() {
   const [loading, setLoading] = useState(false);
   const [camera, setCamera] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState(
     "Ready for scanner input. Scan any participant QR code to load their team.",
@@ -56,7 +58,7 @@ export default function AttendanceConsole() {
           data.team.name +
           " · participant selected for attendance",
       );
-      await fetch("/api/attendance", {
+      const attendanceResponse = await fetch("/api/attendance", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -64,6 +66,9 @@ export default function AttendanceConsole() {
           attendance: true,
         }),
       });
+      const attendanceData = await attendanceResponse.json();
+      if (!attendanceResponse.ok) throw new Error(attendanceData.error || "Could not mark attendance.");
+      if (attendanceData.room) setTeam((current) => ({ ...current, room: attendanceData.room, room_sequence: attendanceData.roomSequence }));
     } catch (loadError) {
       setError(loadError.message || "Could not read that QR code.");
     } finally {
@@ -185,6 +190,7 @@ export default function AttendanceConsole() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ participantId: member._id, attendance }),
     });
+    const data = await response.json();
     if (!response.ok) {
       setError("Attendance update failed. Please retry.");
       setTeam((current) => ({
@@ -193,6 +199,8 @@ export default function AttendanceConsole() {
           item._id === member._id ? { ...item, attendance: !attendance } : item,
         ),
       }));
+    } else if (data.room) {
+      setTeam((current) => ({ ...current, room: data.room, room_sequence: data.roomSequence }));
     }
   }
 
@@ -252,6 +260,7 @@ export default function AttendanceConsole() {
             <span>Use phone camera</span>
           </Button>
         </div>
+        <div className="search-and-create">
         <div className="search-wrap">
           <Search size={19} />
           <Input
@@ -300,6 +309,8 @@ export default function AttendanceConsole() {
             </div>
           )}
         </div>
+          <Button variant="outline" className="outline-button create-team-button" onPress={() => setCreating(true)}><UserPlus size={16} /> Create team</Button>
+        </div>
         {(error || message) && (
           <div className={error ? "notice error-notice" : "notice"}>
             {error ? <CircleAlert size={17} /> : <span className="live-dot" />}
@@ -315,7 +326,7 @@ export default function AttendanceConsole() {
                 <p>
                   <b>#{team.id}</b> ·{" "}
                   {team.members.filter((member) => member.attendance).length}/
-                  {team.members.length} PRESENT
+                  {team.members.length} PRESENT {team.room && <span className="room-badge assigned">ROOM {team.room} · {String(team.room_sequence || 1).padStart(2, "0")}</span>}
                 </p>
               </div>
               <Button
@@ -362,8 +373,17 @@ export default function AttendanceConsole() {
             setTeam(updated);
             setMessage("Team details updated successfully.");
           }}
+          onDeleteTeam={async () => {
+            const response = await fetch("/api/teams/" + team.id, { method: "DELETE" });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error);
+            setTeam(null);
+            setEditing(false);
+            setMessage("Team #" + team.id + " and its participants were deleted.");
+          }}
         />
       )}
+      {creating && <TeamEditor team={null} onClose={() => setCreating(false)} onSaved={(created) => { setTeam(created); setCreating(false); setMessage("Team #" + created.id + " created successfully."); }} />}
       {loading && <span className="sr-only">Loading scanned team</span>}
     </main>
   );

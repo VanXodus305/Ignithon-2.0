@@ -20,11 +20,11 @@ export default function MemberCard({ member, index, onToggle }) {
           </a>
         </p>
       )}
-      {member.roll_no && <p>Roll {member.roll_no}</p>}
+      {member.roll_no && <p><strong>Roll:</strong> {member.roll_no}</p>}
       {member.phone && (
         <p>
           <a className="contact-link" href={`tel:${String(member.phone).replace(/[^\d+]/g, "")}`}>
-            Phone {member.phone}
+            <strong>Phone:</strong> {member.phone}
           </a>
         </p>
       )}
