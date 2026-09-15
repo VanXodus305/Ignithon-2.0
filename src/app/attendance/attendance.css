@@ -212,6 +212,12 @@
   align-items: stretch;
   margin-top: 16px;
 }
+.sheet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
 .search-and-create .search-wrap {
   flex: 1;
   margin-top: 0;
@@ -884,6 +890,9 @@
   background: rgba(18, 118, 106, 0.22);
 }
 @media (max-width: 640px) {
+  .sheet-actions .button {
+    width: 100%;
+  }
   .search-and-create {
     flex-direction: column;
   }

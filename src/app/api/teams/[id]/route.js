@@ -3,6 +3,7 @@ import { serializeTeam } from "@/lib/attendance";
 import mongoose from "mongoose";
 import Participant from "@/models/Participant";
 import Team from "@/models/Team";
+import { syncGoogleSheetSafely } from "@/lib/google-sheets";
 
 const cleanText = (value) =>
   value === undefined || value === null ? undefined : String(value).trim();
@@ -85,6 +86,7 @@ export async function PATCH(request, { params }) {
       await session.endSession();
     }
     const populated = await Team.findById(team._id).populate("members");
+    void syncGoogleSheetSafely();
     return Response.json({ team: serializeTeam(populated) });
   } catch (error) {
     const message = error.code === 11000 ? "That email is already registered to another participant." : error.message;
@@ -107,6 +109,7 @@ export async function DELETE(_request, { params }) {
     } finally {
       await session.endSession();
     }
+    void syncGoogleSheetSafely();
     return Response.json({ success: true });
   } catch (error) {
     return Response.json({ error: error.message || "Could not delete the team." }, { status: 500 });

@@ -3,6 +3,7 @@ import { serializeTeam } from "@/lib/attendance";
 import mongoose from "mongoose";
 import Participant from "@/models/Participant";
 import Team from "@/models/Team";
+import { syncGoogleSheetSafely } from "@/lib/google-sheets";
 
 const rooms = ["A", "B", "C"];
 const cleanText = (value) => value === undefined || value === null ? undefined : String(value).trim();
@@ -44,6 +45,7 @@ export async function POST(request) {
       });
     } finally { await session.endSession(); }
     const populated = await Team.findById(team._id).populate("members");
+    void syncGoogleSheetSafely();
     return Response.json({ team: serializeTeam(populated) }, { status: 201 });
   } catch (error) {
     const message = error.code === 11000 ? "That email is already registered to another participant." : error.message;

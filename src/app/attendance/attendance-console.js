@@ -6,8 +6,10 @@ import {
   ChevronRight,
   CircleAlert,
   Edit3,
+  ExternalLink,
   QrCode,
   Search,
+  RefreshCw,
   Users,
   UserPlus,
   X,
@@ -25,6 +27,7 @@ export default function AttendanceConsole() {
   const [camera, setCamera] = useState(false);
   const [editing, setEditing] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [sheetSyncing, setSheetSyncing] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState(
     "Ready for scanner input. Scan any participant QR code to load their team.",
@@ -211,6 +214,21 @@ export default function AttendanceConsole() {
     setMessage("Team #" + selected.id + " loaded from manual search.");
   }
 
+  async function syncSheet() {
+    setSheetSyncing(true);
+    setError("");
+    try {
+      const response = await fetch("/api/sheets/sync", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      setMessage("Google Sheet synchronized successfully.");
+    } catch (syncError) {
+      setError(syncError.message || "Google Sheet sync failed.");
+    } finally {
+      setSheetSyncing(false);
+    }
+  }
+
   return (
     <main className="portal-shell">
       <section className="portal-card">
@@ -259,6 +277,10 @@ export default function AttendanceConsole() {
             <Camera size={19} />
             <span>Use phone camera</span>
           </Button>
+        </div>
+        <div className="sheet-actions">
+          <Button variant="outline" className="outline-button" onPress={() => window.open("/api/sheets/view", "_blank", "noopener,noreferrer")}><ExternalLink size={16} /> View Google Sheet</Button>
+          <Button variant="outline" className="outline-button" onPress={syncSheet} isDisabled={sheetSyncing}><RefreshCw className={sheetSyncing ? "spin" : ""} size={16} /> {sheetSyncing ? "Syncing…" : "Sync now"}</Button>
         </div>
         <div className="search-and-create">
         <div className="search-wrap">

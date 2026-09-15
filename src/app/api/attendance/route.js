@@ -3,6 +3,7 @@ import { findTeamForQr, searchTeams } from "@/lib/attendance";
 import Participant from "@/models/Participant";
 import Team from "@/models/Team";
 import mongoose from "mongoose";
+import { syncGoogleSheetSafely } from "@/lib/google-sheets";
 
 export const dynamic = "force-dynamic";
 const rooms = ["A", "B", "C"];
@@ -70,6 +71,7 @@ export async function PATCH(request) {
       await session.endSession();
     }
     if (!participant) return Response.json({ error: "Participant not found." }, { status: 404 });
+    void syncGoogleSheetSafely();
     return Response.json({ participant: { ...participant, _id: String(participant._id) }, room: assignment?.room || null, roomSequence: assignment?.roomSequence || null });
   } catch (error) {
     return Response.json({ error: error.message || "Could not update attendance." }, { status: 500 });
